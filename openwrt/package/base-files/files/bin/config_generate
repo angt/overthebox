@@ -60,7 +60,6 @@ generate_static_network() {
 	fi
 }
 
-addr_offset=2
 generate_network() {
 	local ifname macaddr protocol type ipaddr netmask
 
@@ -75,7 +74,22 @@ generate_network() {
 	# force bridge for multi-interface devices (and lan)
 	case "$1:$ifname" in
 		*\ * | lan:*) type="bridge" ;;
+		# hack (see /etc/board.d/02_network)
+		none:*) return ;;
+		wan[0-9]*:*) protocol="dhcp" ;;
 	esac
+
+	if [ -n "$macaddr" ]; then
+		uci -q batch <<-EOF
+		delete network.${1}_dev
+		set network.${1}_dev='device'
+		set network.${1}_dev.name='$1'
+		set network.${1}_dev.type='macvlan'
+		set network.${1}_dev.ifname='$ifname'
+		set network.${1}_dev.macaddr='$macaddr'
+		EOF
+		ifname=$1
+	fi
 
 	uci -q batch <<-EOF
 		delete network.$1
@@ -85,19 +99,12 @@ generate_network() {
 		set network.$1.proto='none'
 	EOF
 
-	[ -n "$macaddr" ] && uci -q batch <<-EOF
-		delete network.$1_dev
-		set network.$1_dev='device'
-		set network.$1_dev.name='$ifname'
-		set network.$1_dev.macaddr='$macaddr'
-	EOF
-
 	case "$protocol" in
 		static)
 			local ipad
 			case "$1" in
-				lan) ipad=${ipaddr:-"192.168.1.1"} ;;
-				*) ipad=${ipaddr:-"192.168.$((addr_offset++)).1"} ;;
+				lan) ipad=${ipaddr:-"192.168.100.1"} ;;
+				*) return ;;
 			esac
 
 			netm=${netmask:-"255.255.255.0"}
@@ -117,10 +124,10 @@ generate_network() {
 			uci set network.$1.proto='dhcp'
 			[ -e /proc/sys/net/ipv6 ] && {
 				uci -q batch <<-EOF
-					delete network.${1}6
-					set network.${1}6='interface'
-					set network.${1}6.ifname='$ifname'
-					set network.${1}6.proto='dhcpv6'
+					delete network.${1}v6
+					set network.${1}v6='interface'
+					set network.${1}v6.ifname='$ifname'
+					set network.${1}v6.proto='dhcpv6'
 				EOF
 			}
 		;;
@@ -134,10 +141,10 @@ generate_network() {
 			[ -e /proc/sys/net/ipv6 ] && {
 				uci -q batch <<-EOF
 					set network.$1.ipv6='1'
-					delete network.${1}6
-					set network.${1}6='interface'
-					set network.${1}6.ifname='@${1}'
-					set network.${1}6.proto='dhcpv6'
+					delete network.${1}v6
+					set network.${1}v6='interface'
+					set network.${1}v6.ifname='@${1}'
+					set network.${1}v6.proto='dhcpv6'
 				EOF
 			}
 		;;
@@ -234,7 +241,7 @@ generate_static_system() {
 	uci -q batch <<-EOF
 		delete system.@system[0]
 		add system system
-		set system.@system[-1].hostname='OpenWrt'
+		set system.@system[-1].hostname='OverTheBox'
 		set system.@system[-1].timezone='UTC'
 		set system.@system[-1].ttylogin='0'
 		set system.@system[-1].log_size='64'
