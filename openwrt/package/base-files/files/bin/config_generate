@@ -121,10 +121,10 @@ generate_network() {
 			uci set network.$1.proto='dhcp'
 			[ -e /proc/sys/net/ipv6 ] && {
 				uci -q batch <<-EOF
-					delete network.${1}6
-					set network.${1}6='interface'
-					set network.${1}6.ifname='$ifname'
-					set network.${1}6.proto='dhcpv6'
+					delete network.${1}v6
+					set network.${1}v6='interface'
+					set network.${1}v6.ifname='$ifname'
+					set network.${1}v6.proto='dhcpv6'
 				EOF
 			}
 		;;
@@ -138,10 +138,10 @@ generate_network() {
 			[ -e /proc/sys/net/ipv6 ] && {
 				uci -q batch <<-EOF
 					set network.$1.ipv6='1'
-					delete network.${1}6
-					set network.${1}6='interface'
-					set network.${1}6.ifname='@${1}'
-					set network.${1}6.proto='dhcpv6'
+					delete network.${1}v6
+					set network.${1}v6='interface'
+					set network.${1}v6.ifname='@${1}'
+					set network.${1}v6.proto='dhcpv6'
 				EOF
 			}
 		;;
