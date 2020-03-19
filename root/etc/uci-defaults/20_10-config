@@ -1,0 +1,5 @@
+#!/bin/sh
+# vim: set noexpandtab tabstop=4 shiftwidth=4 softtabstop=4 :
+
+uci -q set 'network.lan.ipaddr=192.168.100.1'
+uci -q set 'system.@system[0].hostname=OverTheBox'

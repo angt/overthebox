@@ -1,0 +1,35 @@
+#!/bin/sh
+# vim: set noexpandtab tabstop=4 shiftwidth=4 softtabstop=4 :
+
+# check for more than one interface
+[ "$(find /sys/class/net/ -name 'eth*' | wc -l)" -gt 1 ] || return 0
+
+# check for real interfaces
+[ "$(find /sys/class/net/ -name 'eth*.*' | wc -l)" = 0 ] || return 0
+
+# remove wan/wan6 from board.d
+if [ "$(uci -q get network.wan)" = interface ]; then
+	uci -q delete network.wan
+	uci -q delete network.wan6
+fi
+
+otb_set_interface() {
+	[ "$(uci -q get "network.$1")" = interface ] && return 0
+	uci -q batch <<-EOF
+	set network.$1=interface
+	set network.$1.ifname='$2'
+	set network.$1.proto='$3'
+	EOF
+}
+
+for i in /sys/class/net/eth*; do
+	case "$i" in
+		/sys/class/net/eth0)
+			otb_set_interface lan eth0 static
+			;;
+		/sys/class/net/eth*)
+			num=${i##*/eth}
+			otb_set_interface "wan$num" "eth$num" dhcp
+			;;
+	esac
+done
